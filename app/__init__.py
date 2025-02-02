@@ -4,6 +4,7 @@ from flask_migrate import Migrate
 from dotenv import load_dotenv
 import os
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS, cross_origin
 
 # Load environment variables from .env file
 load_dotenv()
@@ -14,8 +15,11 @@ migrate = Migrate()
 
 def create_app():
     # Create and configure the app
+    
     app = Flask(__name__)
+    cors = CORS(app)
     app.config['JWT_SECRET_KEY'] = 'your_secret_key'
+    app.config['CORS_HEADERS'] = 'Content-Type'
 
 
     jwt = JWTManager(app)
@@ -32,7 +36,9 @@ def create_app():
     from app.models import User, Post
 
     # Register blueprints here
-    from app.routes import user_routes
+    from app.routes import user_routes, author_routes
     app.register_blueprint(user_routes)
+    app.register_blueprint(author_routes)
+
 
     return app

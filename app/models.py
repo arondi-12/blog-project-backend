@@ -44,5 +44,6 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    image = db.Column(db.String(255), nullable=True)
 
     author = db.relationship('User', backref=db.backref('posts', lazy=True))

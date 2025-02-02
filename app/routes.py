@@ -1,30 +1,31 @@
-from flask import Blueprint, request, jsonify
-from .models import db, User
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from .models import db, User, Post
 
-
+# User Blueprint
 user_routes = Blueprint('user', __name__)
 
 @user_routes.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
+    
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({"error": "Email already registered"}), 400
+
     new_user = User(
-        username = data['username'],
-        email = data['email'],
+        username=data['username'],
+        email=data['email'],
+        role=data.get("role", 'user')
     )
-   
+
     try:
         new_user.set_password(data['password'])
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    if User.query.filter_by(email=data['email']).first():
-        return jsonify({"error": "Email already registered"}), 400
-
-    # user = User(username=username, email=email)
-    # user.set_password(password)
-    db.session.add(new_user)
-    db.session.commit()
+    with current_app.app_context():
+        db.session.add(new_user)
+        db.session.commit()
 
     return jsonify({"message": "User registered successfully"}), 201
 
@@ -37,63 +38,81 @@ def login():
     user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
         return jsonify({"error": "Invalid credentials"}), 401
+    
+    additional_claims = {
+        "id": str(user.id),  # Ensure ID is stored as a string in the token
+        "email": user.email,
+        "role": user.role
+    }
 
-    token = create_access_token(identity=user.id)
+    token = create_access_token(identity=str(user.id), additional_claims=additional_claims)
     return jsonify({"access_token": token}), 200
 
 @user_routes.route('/user', methods=['GET'])
 @jwt_required()
 def get_user():
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())  # Convert to integer
     user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
     return jsonify({"username": user.username, "email": user.email}), 200
 
 
-# @author_routes.route('/blog', methods=['POST'])
-# @jwt_required()
-# def create_blog():
-#     user_id = get_jwt_identity()
-#     data = request.get_json()
-#     title = data.get('title')
-#     content = data.get('content')
-#     image = data.get('image')  # Assuming this is a URL or base64 string
+# Author Blueprint for Blog Routes
+author_routes = Blueprint('author', __name__)
 
-#     if not title or not content:
-#         return jsonify({"error": "Title and content are required"}), 400
-
-#     new_blog = Blog(title=title, content=content, image=image, author_id=user_id)
-#     db.session.add(new_blog)
-#     db.session.commit()
-
-#     return jsonify({"message": "Blog created successfully", "blog_id": new_blog.id}), 201
-
-# @author_routes.route('/blog/<int:blog_id>', methods=['PUT'])
-# @jwt_required()
-# def update_blog(blog_id):
-#     user_id = get_jwt_identity()
-#     blog = Blog.query.get(blog_id)
+@author_routes.route('/blog', methods=['POST'])
+@jwt_required()
+def create_blog():
+    user_id = int(get_jwt_identity())  # Convert to integer
+    data = request.get_json()
     
-#     if not blog or blog.author_id != user_id:
-#         return jsonify({"error": "Blog not found or unauthorized"}), 404
-    
-#     data = request.get_json()
-#     blog.title = data.get('title', blog.title)
-#     blog.content = data.get('content', blog.content)
-#     blog.image = data.get('image', blog.image)
-    
-#     db.session.commit()
-#     return jsonify({"message": "Blog updated successfully"}), 200
+    title = data.get('title')
+    content = data.get('content')
+    image = data.get('image')
 
-# @author_routes.route('/blog/<int:blog_id>', methods=['DELETE'])
-# @jwt_required()
-# def delete_blog(blog_id):
-#     user_id = get_jwt_identity()
-#     blog = Blog.query.get(blog_id)
-    
-#     if not blog or blog.author_id != user_id:
-#         return jsonify({"error": "Blog not found or unauthorized"}), 404
-    
-#     db.session.delete(blog)
-#     db.session.commit()
-#     return jsonify({"message": "Blog deleted successfully"}), 200
+    if not title or not content:
+        return jsonify({"error": "Title and content are required"}), 400
 
+    new_blog = Post(title=title, content=content, image=image, author_id=user_id)
+
+    db.session.add(new_blog)
+    db.session.commit()
+
+    return jsonify({"message": "Blog created successfully", "blog_id": new_blog.id}), 201
+
+@author_routes.route('/blog/<int:blog_id>', methods=['PUT'])
+@jwt_required()
+def update_blog(blog_id):
+    user_id = int(get_jwt_identity())  # Convert to integer
+    blog = Post.query.get(blog_id)
+
+    if not blog or blog.author_id != user_id:
+        return jsonify({"error": "Blog not found or unauthorized"}), 404
+
+    data = request.get_json()
+    blog.title = data.get('title', blog.title)
+    blog.content = data.get('content', blog.content)
+    blog.image = data.get('image', blog.image)
+
+    with current_app.app_context():
+        db.session.commit()
+
+    return jsonify({"message": "Blog updated successfully"}), 200
+
+@author_routes.route('/blog/<int:blog_id>', methods=['DELETE'])
+@jwt_required()
+def delete_blog(blog_id):
+    user_id = int(get_jwt_identity())  # Convert to integer
+    blog = Post.query.get(blog_id)
+
+    if not blog or blog.author_id != user_id:
+        return jsonify({"error": "Blog not found or unauthorized"}), 404
+
+    with current_app.app_context():
+        db.session.delete(blog)
+        db.session.commit()
+
+    return jsonify({"message": "Blog deleted successfully"}), 200
