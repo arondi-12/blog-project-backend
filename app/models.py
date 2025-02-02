@@ -10,7 +10,7 @@ class User(db.Model):
     username = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(250), nullable=False, unique=True)
     password = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default='user')  # Roles: 'admin', 'author', 'user'
+    role = db.Column(db.String(50), nullable=False, default='user')  
 
     def set_password(self, password):
         if not self.is_valid_password(password):

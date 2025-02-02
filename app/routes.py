@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from .models import db, User, Post
 
-# User Blueprint
+
 user_routes = Blueprint('user', __name__)
 
 @user_routes.route('/register', methods=['POST'])
@@ -40,7 +40,7 @@ def login():
         return jsonify({"error": "Invalid credentials"}), 401
     
     additional_claims = {
-        "id": str(user.id),  # Ensure ID is stored as a string in the token
+        "id": str(user.id),  
         "email": user.email,
         "role": user.role
     }
@@ -51,7 +51,7 @@ def login():
 @user_routes.route('/user', methods=['GET'])
 @jwt_required()
 def get_user():
-    user_id = int(get_jwt_identity())  # Convert to integer
+    user_id = int(get_jwt_identity())  
     user = User.query.get(user_id)
 
     if not user:
@@ -60,13 +60,13 @@ def get_user():
     return jsonify({"username": user.username, "email": user.email}), 200
 
 
-# Author Blueprint for Blog Routes
+
 author_routes = Blueprint('author', __name__)
 
 @author_routes.route('/blog', methods=['POST'])
 @jwt_required()
 def create_blog():
-    user_id = int(get_jwt_identity())  # Convert to integer
+    user_id = int(get_jwt_identity())  
     data = request.get_json()
     
     title = data.get('title')
@@ -86,7 +86,7 @@ def create_blog():
 @author_routes.route('/blog/<int:blog_id>', methods=['PUT'])
 @jwt_required()
 def update_blog(blog_id):
-    user_id = int(get_jwt_identity())  # Convert to integer
+    user_id = int(get_jwt_identity())  
     blog = Post.query.get(blog_id)
 
     if not blog or blog.author_id != user_id:
@@ -105,7 +105,7 @@ def update_blog(blog_id):
 @author_routes.route('/blog/<int:blog_id>', methods=['DELETE'])
 @jwt_required()
 def delete_blog(blog_id):
-    user_id = int(get_jwt_identity())  # Convert to integer
+    user_id = int(get_jwt_identity())  
     blog = Post.query.get(blog_id)
 
     if not blog or blog.author_id != user_id:
