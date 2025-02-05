@@ -63,6 +63,24 @@ def get_user():
 
 author_routes = Blueprint('author', __name__)
 
+@author_routes.route('/all-blogs', methods=['GET'])
+def get_all_blogs():
+    blogs = Post.query.all()
+    
+    all_blogs = []
+    for blog in blogs:
+        all_blogs.append({
+            "id": blog.id,
+            "title": blog.title,
+            "content": blog.content,
+            "image": blog.image,
+            "author_id": blog.author_id,
+            "created_at": blog.created_at.strftime("%Y-%m-%d %H:%M:%S") if blog.created_at else None
+        })
+
+    return jsonify({"blogs": all_blogs}), 200
+
+
 @author_routes.route('/blog', methods=['POST'])
 @jwt_required()
 def create_blog():
